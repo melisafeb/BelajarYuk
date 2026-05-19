@@ -120,6 +120,34 @@
         }
         .clear-chat-btn:hover {
             text-decoration: underline;
+            /* ===== FEEDBACK UNTUK KUIS ===== */
+        .feedback-correct {
+            background-color: #10b98120;
+            border-left: 4px solid #10b981;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .feedback-wrong {
+            background-color: #ef444420;
+            border-left: 4px solid #ef4444;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .quiz-option {
+           transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .quiz-option:hover {
+          background-color: #3b82f620;
+          border-radius: 8px;
+        }
         }
     </style>
     <title>BelajarYuk - Dashboard</title>
@@ -1684,39 +1712,111 @@ function openVirtualQuiz(jitsiRoomFromUrl = null, materiIdFromUrl = null) {
         });
     }
 }
-        function renderVirtualQuiz(quiz) {
-            const container = document.getElementById("virtualQuizContent"); container.innerHTML = "";
-            quiz.forEach((q, idx) => {
-                const div = document.createElement("div"); div.className = "border-b pb-3 mb-3";
-                div.innerHTML = `<p class="font-bold">${idx+1}. ${q.text}</p><div class="space-y-1 mt-1">${q.options.map((opt, optIdx) => `<label class="flex items-center gap-2"><input type="radio" name="vq${idx}" value="${optIdx}"><span>${String.fromCharCode(65+optIdx)}. ${opt}</span></label>`).join('')}</div>`;
-                container.appendChild(div);
-                div.querySelectorAll(`input[name="vq${idx}"]`).forEach(radio => radio.addEventListener('change', (e) => {
-                    const val = parseInt(e.target.value);
-                    virtualQuizAnswers[idx] = val;
-                    const isCorrect = (val === q.correct);
-                    playFeedback(isCorrect);
-                    // Emit to room for real-time collaboration
-                    if (socket && currentRoom) {
-                        socket.emit('shared-quiz-answer', { room: currentRoom, materiId: currentVirtualMaterial._id, questionIndex: idx, memberName: currentUser.name, isCorrect });
-                    }
-                }));
+function renderVirtualQuiz(quiz) {
+    const container = document.getElementById("virtualQuizContent"); 
+    container.innerHTML = "";
+    
+    quiz.forEach((q, idx) => {
+        const div = document.createElement("div"); 
+        div.className = "border-b pb-3 mb-3";
+        div.innerHTML = `
+            <p class="font-bold">${idx+1}. ${q.text}</p>
+            <div class="space-y-1 mt-1" id="vq_options_${idx}">
+                ${q.options.map((opt, optIdx) => `
+                    <label class="flex items-center gap-2 quiz-option p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
+                        <input type="radio" name="vq${idx}" value="${optIdx}">
+                        <span>${String.fromCharCode(65+optIdx)}. ${opt}</span>
+                    </label>
+                `).join('')}
+            </div>
+            <div id="vq_feedback_${idx}" class="mt-2"></div>
+        `;
+        container.appendChild(div);
+        
+        // Event listener untuk setiap radio button
+        div.querySelectorAll(`input[name="vq${idx}"]`).forEach(radio => {
+            radio.addEventListener('change', async (e) => {
+                const val = parseInt(e.target.value);
+                virtualQuizAnswers[idx] = val;
+                const isCorrect = (val === q.correct);
+                
+                // Tampilkan feedback langsung (tanpa AI biar cepat)
+                const feedbackDiv = document.getElementById(`vq_feedback_${idx}`);
+                const userAnswerText = q.options[val];
+                const correctAnswerText = q.options[q.correct];
+                
+                if (isCorrect) {
+                    feedbackDiv.innerHTML = `
+                        <div class="feedback-correct">
+                            ✅ <strong>Benar!</strong><br>
+                            Jawaban "${userAnswerText}" tepat.
+                        </div>
+                    `;
+                } else {
+                    feedbackDiv.innerHTML = `
+                        <div class="feedback-wrong">
+                            ❌ <strong>Kurang tepat!</strong><br>
+                            Jawaban yang benar adalah <strong>${String.fromCharCode(65+q.correct)}. ${correctAnswerText}</strong>.<br>
+                            ${q.explanation || 'Yuk, pelajari lagi materi ini!'}
+                        </div>
+                    `;
+                }
+                
+                playFeedback(isCorrect);
+                
+                // Emit ke socket untuk real-time
+                if (socket && currentRoom) {
+                    socket.emit('shared-quiz-answer', { 
+                        room: currentRoom, 
+                        materiId: currentVirtualMaterial._id, 
+                        questionIndex: idx, 
+                        memberName: currentUser.name, 
+                        isCorrect 
+                    });
+                }
             });
+        });
+    });
+}
+async function submitVirtualQuiz() {
+    if (!currentVirtualMaterial) return alert("Pilih materi dulu");
+    let correct = 0; 
+    let allAnswered = true;
+    
+    currentVirtualMaterial.quiz.forEach((q, i) => { 
+        if (virtualQuizAnswers[i] !== undefined) {
+            if (virtualQuizAnswers[i] === q.correct) correct++;
+        } else {
+            allAnswered = false;
         }
-        async function submitVirtualQuiz() {
-            if (!currentVirtualMaterial) return alert("Pilih materi dulu");
-            let correct = 0; currentVirtualMaterial.quiz.forEach((q,i) => { if(virtualQuizAnswers[i] === q.correct) correct++; });
-            const score = Math.round(correct/currentVirtualMaterial.quiz.length*100);
-            const allAnswered = Object.keys(virtualQuizAnswers).length === currentVirtualMaterial.quiz.length;
-            playFeedback(allAnswered ? (correct === currentVirtualMaterial.quiz.length) : false);
-            alert(`Skor Anda: ${correct}/${currentVirtualMaterial.quiz.length} (${score}%)`);
-            const quizResults = [...(currentVirtualMaterial.quizResults || []), { date: new Date(), score, answers: virtualQuizAnswers }];
-            await apiFetch(`/materi/${currentVirtualMaterial._id}`, { method: "PUT", body: JSON.stringify({ quizResults }) });
-            await loadMaterials(); alert("Skor tersimpan.");
+    });
+    
+    const score = Math.round(correct/currentVirtualMaterial.quiz.length*100);
+    const total = currentVirtualMaterial.quiz.length;
+    
+    if (!allAnswered) {
+        if (!confirm(`Anda baru menjawab ${Object.keys(virtualQuizAnswers).length}/${total} soal. Tetap kirim?`)) {
+            return;
         }
-        function closeVirtualQuiz() {
-            document.getElementById("virtualQuizModal").classList.add("hidden");
-            if (jitsiApi) jitsiApi.executeCommand('hangup');
-        }
+    }
+    
+    playFeedback(correct === total);
+    alert(`📊 Skor Anda: ${correct}/${total} (${score}%)\n\n${score >= 70 ? '🎉 Selamat! Lanjutkan belajar!' : '💪 Tetap semangat, coba lagi!'}`);
+    
+    const quizResults = [...(currentVirtualMaterial.quizResults || []), { 
+        date: new Date(), 
+        score, 
+        answers: virtualQuizAnswers 
+    }];
+    
+    await apiFetch(`/materi/${currentVirtualMaterial._id}`, { 
+        method: "PUT", 
+        body: JSON.stringify({ quizResults }) 
+    });
+    
+    await loadMaterials(); 
+    alert("Skor tersimpan.");
+}
 
         // ====================== PROFIL ======================
         async function loadProfile() {
