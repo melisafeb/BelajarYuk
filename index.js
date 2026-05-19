@@ -1076,6 +1076,70 @@ io.on('connection', (socket) => {
   });
 });
 
+// ====================== ADMIN ROUTES ======================
+// Middleware untuk cek role admin
+const isAdmin = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Akses ditolak. Hanya untuk admin.' });
+  }
+};
+
+// Get semua users (hanya admin)
+app.get('/api/admin/users', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const users = await User.find().select('-password');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get semua materi (hanya admin)
+app.get('/api/admin/materi', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const materi = await Materi.find().populate('userId', 'name email').sort({ createdAt: -1 });
+    res.json(materi);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Delete user by ID (hanya admin)
+app.delete('/api/admin/users/:id', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
+    
+    // Jangan biarkan admin menghapus admin lain (opsional)
+    if (user.role === 'admin') {
+      return res.status(403).json({ message: 'Tidak bisa menghapus user admin' });
+    }
+    
+    // Hapus semua materi milik user ini
+    await Materi.deleteMany({ userId: req.params.id });
+    
+    // Hapus user
+    await User.findByIdAndDelete(req.params.id);
+    
+    res.json({ message: 'User dan semua materinya berhasil dihapus' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Delete materi by ID (hanya admin)
+app.delete('/api/admin/materi/:id', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const materi = await Materi.findByIdAndDelete(req.params.id);
+    if (!materi) return res.status(404).json({ message: 'Materi tidak ditemukan' });
+    res.json({ message: 'Materi berhasil dihapus' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ====================== START SERVER ======================
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
