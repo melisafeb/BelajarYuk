@@ -354,6 +354,38 @@
             </div>
         </div>
     </div>
+    <!-- MODAL NOTIFIKASI KUSTOM -->
+<div id="customNotificationModal" class="fixed inset-0 z-50 hidden modal-overlay flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+            <h3 id="notifTitle" class="text-lg font-bold text-primary">BelajarYuk</h3>
+            <button onclick="closeCustomNotif()" class="text-slate-400 hover:text-primary">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div id="notifMessage" class="text-slate-700 dark:text-slate-300 mb-6"></div>
+        <div class="flex justify-end">
+            <button id="notifConfirmBtn" onclick="closeCustomNotif()" class="bg-primary text-white px-5 py-2 rounded-xl font-bold">Oke</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CONFIRM KUSTOM -->
+<div id="customConfirmModal" class="fixed inset-0 z-50 hidden modal-overlay flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-primary">Konfirmasi</h3>
+            <button onclick="closeCustomConfirm()" class="text-slate-400 hover:text-primary">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div id="confirmMessage" class="text-slate-700 dark:text-slate-300 mb-6"></div>
+        <div class="flex justify-end gap-3">
+            <button id="confirmCancelBtn" class="bg-slate-300 text-slate-700 px-5 py-2 rounded-xl font-bold">Batal</button>
+            <button id="confirmOkBtn" class="bg-primary text-white px-5 py-2 rounded-xl font-bold">Oke</button>
+        </div>
+    </div>
+</div>
 
     <script>
         // ====================== KONFIGURASI ======================
@@ -385,59 +417,253 @@
         let currentSummaryQuizAnswers = {};
         let currentModalQuiz = null;
         let currentModalStep = null;
+        let confirmCallback = null;
         let stepState = {
           stepIndex: 1,
           totalSteps: 16
         };
+        // ====================== NOTIFIKASI KUSTOM (TANPA DOMAIN RAILWAY) ======================
+
+
+function showCustomNotif(message, title = 'BelajarYuk') {
+    document.getElementById('notifTitle').innerText = title;
+    document.getElementById('notifMessage').innerHTML = message;
+    document.getElementById('customNotificationModal').classList.remove('hidden');
+}
+
+function closeCustomNotif() {
+    document.getElementById('customNotificationModal').classList.add('hidden');
+}
+
+function showCustomConfirm(message, onConfirm, onCancel = null) {
+    document.getElementById('confirmMessage').innerHTML = message;
+    document.getElementById('customConfirmModal').classList.remove('hidden');
+    
+    const okBtn = document.getElementById('confirmOkBtn');
+    const cancelBtn = document.getElementById('confirmCancelBtn');
+    
+    // Hapus event listener lama
+    const newOkBtn = okBtn.cloneNode(true);
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    
+    newOkBtn.onclick = () => {
+        closeCustomConfirm();
+        if (onConfirm) onConfirm();
+    };
+    
+    newCancelBtn.onclick = () => {
+        closeCustomConfirm();
+        if (onCancel) onCancel();
+    };
+}
+
+function closeCustomConfirm() {
+    document.getElementById('customConfirmModal').classList.add('hidden');
+}
+
+// Override alert
+window.alert = function(message) {
+    showCustomNotif(message);
+};
+
+// Override confirm
+window.confirm = function(message) {
+    // Return true/false via callback (async)
+    showCustomConfirm(message, () => {
+        // User klik OK
+        window.confirmResult = true;
+    }, () => {
+        window.confirmResult = false;
+    });
+    // Tunggu sebentar (tapi karena async, perlu handling khusus)
+    return true; // default sementara
+};
+
+// Fungsi confirm async yang bisa dipakai di kode
+async function customConfirm(message) {
+    return new Promise((resolve) => {
+        showCustomConfirm(message, () => resolve(true), () => resolve(false));
+    });
+}
+
 
         // ====================== NOTIFIKASI & SUARA ======================
-        function requestNotificationPermission() {
-            if ('Notification' in window) {
-                Notification.requestPermission().then(perm => console.log('Notifikasi permission:', perm));
-            }
-        }
+function requestNotificationPermission() {
+    if ('Notification' in window) {
+        Notification.requestPermission().then(perm => console.log('Notifikasi permission:', perm));
+    }
+}
 
-        function playFeedback(isCorrect) {
-            const soundEnabled = document.getElementById('notifSound')?.checked === true;
-            if (!soundEnabled) return;
+function playFeedback(isCorrect) {
+    const soundEnabled = document.getElementById('notifSound')?.checked === true;
+    if (!soundEnabled) return;
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.type = isCorrect ? 'sine' : 'square';
+        oscillator.frequency.value = isCorrect ? 880 : 440;
+        gainNode.gain.value = 0.3;
+        oscillator.start();
+        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+        oscillator.stop(audioCtx.currentTime + 0.5);
+    } catch(e) { console.warn('Audio tidak didukung'); }
+    if (navigator.vibrate) navigator.vibrate(isCorrect ? 100 : 200);
+}
+
+function showQuizReminder(materiTitle) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if (!document.getElementById('notifQuiz')?.checked) return;
+    new Notification('BelajarYuk - Pengingat Kuis', {
+        body: `Anda memiliki kuis untuk materi "${materiTitle}". Yuk kerjakan!`,
+        icon: 'https://via.placeholder.com/64',
+        silent: false
+    });
+}
+
+function checkPendingQuizzes() {
+    console.log('Mengecek pending quizzes...');
+    materials.forEach(m => {
+        // Jika materi belum memiliki quizResults (belum pernah dikerjakan)
+        if (!m.quizResults || m.quizResults.length === 0) {
+            showQuizReminder(m.title);
+        }
+    });
+}
+
+function startQuizReminderInterval() {
+    if (notifInterval) clearInterval(notifInterval);
+    if (document.getElementById('notifQuiz')?.checked) {
+        notifInterval = setInterval(() => {
+            checkPendingQuizzes();
+            checkUnfinishedMaterials(); // Juga cek materi belum selesai
+        }, 60 * 60 * 1000); // Setiap 1 jam
+    }
+}
+
+// ====================== NOTIFIKASI MATERI BELUM SELESAI ======================
+async function checkUnfinishedMaterials() {
+    try {
+        // Ambil semua materi user
+        const userMaterials = await apiFetch("/materi");
+        
+        // Filter materi yang belum pernah dikerjakan kuisnya (quizResults kosong)
+        const unfinishedMaterials = userMaterials.filter(m => {
+            return !m.quizResults || m.quizResults.length === 0;
+        });
+        
+        // Cek progress yang belum selesai (jawaban belum lengkap)
+        const materialsWithProgress = [];
+        for (const m of userMaterials) {
             try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioCtx.createOscillator();
-                const gainNode = audioCtx.createGain();
-                oscillator.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                oscillator.type = isCorrect ? 'sine' : 'square';
-                oscillator.frequency.value = isCorrect ? 880 : 440;
-                gainNode.gain.value = 0.3;
-                oscillator.start();
-                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
-                oscillator.stop(audioCtx.currentTime + 0.5);
-            } catch(e) { console.warn('Audio tidak didukung'); }
-            if (navigator.vibrate) navigator.vibrate(isCorrect ? 100 : 200);
-        }
-
-        function showQuizReminder(materiTitle) {
-            if (!('Notification' in window) || Notification.permission !== 'granted') return;
-            if (!document.getElementById('notifQuiz')?.checked) return;
-            new Notification('BelajarYuk - Pengingat Kuis', {
-                body: `Anda memiliki kuis untuk materi "${materiTitle}". Yuk kerjakan!`,
-                icon: 'https://via.placeholder.com/64',
-                silent: false
-            });
-        }
-
-        function checkPendingQuizzes() {
-            materials.forEach(m => {
-                if (!m.quizResults?.length) showQuizReminder(m.title);
-            });
-        }
-
-        function startQuizReminderInterval() {
-            if (notifInterval) clearInterval(notifInterval);
-            if (document.getElementById('notifQuiz')?.checked) {
-                notifInterval = setInterval(checkPendingQuizzes, 60 * 60 * 1000);
+                const progressRes = await fetch(`${API_BASE}/quiz-progress/${m._id}`, {
+                    headers: { 'x-auth-token': getToken() }
+                });
+                const progressData = await progressRes.json();
+                const savedAnswers = progressData.answers || {};
+                const answeredCount = Object.keys(savedAnswers).length;
+                
+                // Jika sudah ada jawaban tapi belum lengkap (belum submit)
+                if (answeredCount > 0 && answeredCount < m.quiz.length) {
+                    materialsWithProgress.push({
+                        ...m,
+                        answeredCount: answeredCount,
+                        totalQuestions: m.quiz.length
+                    });
+                }
+            } catch(e) {
+                console.error('Gagal cek progress:', e);
             }
         }
+        
+        // Gabungkan materi belum pernah dikerjakan + yang belum selesai
+        const allUnfinished = [...unfinishedMaterials, ...materialsWithProgress];
+        
+        return allUnfinished;
+    } catch(err) {
+        console.error('Gagal cek materi belum selesai:', err);
+        return [];
+    }
+}
+
+// Fungsi untuk menampilkan notifikasi di dashboard
+async function showUnfinishedNotification() {
+    const notifBtn = document.querySelector('[onclick="showNotifications()"]');
+    if (!notifBtn) return;
+    
+    const unfinished = await checkUnfinishedMaterials();
+    const count = unfinished.length;
+    
+    // Tambahkan badge/indicator ke tombol notifikasi
+    let badge = notifBtn.querySelector('.notification-badge');
+    if (!badge && count > 0) {
+        badge = document.createElement('span');
+        badge.className = 'notification-badge absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center';
+        badge.innerText = count > 9 ? '9+' : count;
+        notifBtn.style.position = 'relative';
+        notifBtn.appendChild(badge);
+    } else if (badge && count > 0) {
+        badge.innerText = count > 9 ? '9+' : count;
+        badge.classList.remove('hidden');
+    } else if (badge && count === 0) {
+        badge.classList.add('hidden');
+    }
+    
+    // Simpan data unfinished untuk ditampilkan saat klik notifikasi
+    window.unfinishedMaterials = unfinished;
+}
+
+// Ganti fungsi showNotifications yang lama
+const originalShowNotifications = window.showNotifications;
+window.showNotifications = async function() {
+    const unfinished = await checkUnfinishedMaterials();
+    
+    if (unfinished.length === 0) {
+        showCustomNotif("✅ Tidak ada notifikasi baru.\nSemua materi sudah kamu selesaikan! Selamat! 🎉");
+        return;
+    }
+    
+    let message = "📋 **MATERI YANG BELUM SELESAI**<br><br>";
+    message += `Kamu memiliki ${unfinished.length} materi yang belum selesai dikerjakan:<br><br>`;
+    
+    unfinished.forEach((m, idx) => {
+        if (!m.quizResults || m.quizResults.length === 0) {
+            message += `${idx+1}. 📄 ${m.title}<br>   ⚠️ Belum pernah dikerjakan<br>`;
+        } else if (m.answeredCount) {
+            message += `${idx+1}. 📄 ${m.title}<br>   ⏳ Progress: ${m.answeredCount}/${m.totalQuestions} soal terjawab<br>   📌 Belum di-submit<br>`;
+        } else {
+            message += `${idx+1}. 📄 ${m.title}<br>   ❌ Belum selesai<br>`;
+        }
+        message += `   🔗 Klik untuk kerjakan: Buka menu "Upload Materi" lalu pilih materi ini<br><br>`;
+    });
+    
+    message += `💡 **Tips:** Selesaikan materimu agar skor tersimpan dan raih prestasi!`;
+    
+    const goToMateri = await customConfirm(message + "<br><br>Ingin langsung ke halaman materi?");
+    if (goToMateri) {
+        showMateri();
+    }
+};
+// Fungsi untuk mengecek dan update notifikasi secara periodik
+let notifCheckInterval = null;
+
+function startNotifCheckInterval() {
+    if (notifCheckInterval) clearInterval(notifCheckInterval);
+    notifCheckInterval = setInterval(async () => {
+        await showUnfinishedNotification();
+    }, 30000); // Cek setiap 30 detik
+}
+
+function stopNotifCheckInterval() {
+    if (notifCheckInterval) {
+        clearInterval(notifCheckInterval);
+        notifCheckInterval = null;
+    }
+}
 
         // ====================== HELPER FETCH ======================
         async function apiFetch(endpoint, options = {}) {
@@ -1258,7 +1484,9 @@ for (let i = 0; i < total; i++) {
 }
         async function uploadDocument() {
             const fileInput = document.getElementById("fileUploadInput");
-            if (!fileInput.files.length) return alert("Pilih file");
+            if (!fileInput.files.length) {
+              return;
+           }
             const file = fileInput.files[0];
             const formData = new FormData();
             formData.append("file", file);
