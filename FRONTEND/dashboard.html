@@ -28,6 +28,154 @@
         };
     </script>
     <style>
+        /* ====================== NOTIFIKASI POP UP ANIMASI ====================== */
+.notif-popup {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    width: 360px;
+    max-width: calc(100vw - 40px);
+    animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55), fadeOut 0.3s ease 4.7s forwards;
+    overflow: hidden;
+}
+
+.dark .notif-popup {
+    background: #1e293b;
+    box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+        visibility: hidden;
+        transform: translateX(20px);
+    }
+}
+
+.notif-popup-header {
+    background: linear-gradient(135deg, #2b7cee, #1a5bbf);
+    padding: 14px 16px;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.notif-popup-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.notif-popup-close {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
+    transition: all 0.2s;
+}
+
+.notif-popup-close:hover {
+    background: rgba(255,255,255,0.4);
+    transform: scale(1.1);
+}
+
+.notif-popup-body {
+    padding: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #334155;
+}
+
+.dark .notif-popup-body {
+    color: #cbd5e1;
+}
+
+.notif-popup-body ul {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+.notif-popup-body li {
+    margin: 8px 0;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 8px;
+}
+
+.dark .notif-popup-body li {
+    border-bottom-color: #334155;
+}
+
+.notif-popup-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.dark .notif-popup-footer {
+    border-top-color: #334155;
+}
+
+.notif-popup-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.notif-popup-btn-primary {
+    background: #2b7cee;
+    color: white;
+}
+
+.notif-popup-btn-primary:hover {
+    background: #1a5bbf;
+}
+
+.notif-popup-btn-secondary {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.dark .notif-popup-btn-secondary {
+    background: #334155;
+    color: #cbd5e1;
+}
+
+.notif-popup-btn-secondary:hover {
+    background: #cbd5e1;
+}
         body { font-family: 'Lexend', sans-serif; }
         .glass-card { background: rgba(255,255,255,0.8); backdrop-filter: blur(8px); }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
@@ -425,11 +573,137 @@
         // ====================== NOTIFIKASI KUSTOM (TANPA DOMAIN RAILWAY) ======================
 
 
-function showCustomNotif(message, title = 'BelajarYuk') {
-    document.getElementById('notifTitle').innerText = title;
-    document.getElementById('notifMessage').innerHTML = message;
-    document.getElementById('customNotificationModal').classList.remove('hidden');
+let currentNotifPopup = null;
+
+function showNotificationPopup(unfinished) {
+    // Hapus popup lama jika ada
+    if (currentNotifPopup) {
+        currentNotifPopup.remove();
+        currentNotifPopup = null;
+    }
+    
+    const count = unfinished.length;
+    
+    // Buat elemen popup
+    const popup = document.createElement('div');
+    popup.className = 'notif-popup';
+    
+    // Header
+    const header = document.createElement('div');
+    header.className = 'notif-popup-header';
+    header.innerHTML = `
+        <h4>
+            <span class="material-symbols-outlined" style="font-size: 20px;">notifications_active</span>
+            BelajarYuk - Reminder
+        </h4>
+        <button class="notif-popup-close" onclick="this.closest('.notif-popup').remove()">
+            <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
+        </button>
+    `;
+    
+    // Body
+    const body = document.createElement('div');
+    body.className = 'notif-popup-body';
+    
+    if (count === 0) {
+        body.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <span class="material-symbols-outlined" style="font-size: 48px; color: #10b981;">check_circle</span>
+                <p style="margin-top: 12px;">✅ Tidak ada notifikasi baru.<br>Semua materi sudah kamu selesaikan!</p>
+            </div>
+        `;
+    } else {
+        let materiList = '';
+        unfinished.slice(0, 5).forEach((m, idx) => {
+            let statusIcon = '⚠️';
+            let statusText = 'Belum pernah dikerjakan';
+            if (m.answeredCount) {
+                statusIcon = '⏳';
+                statusText = `Progress: ${m.answeredCount}/${m.totalQuestions} soal terjawab`;
+            }
+            materiList += `
+                <li>
+                    <strong>${idx+1}. 📄 ${m.title.substring(0, 40)}${m.title.length > 40 ? '...' : ''}</strong><br>
+                    <span style="font-size: 11px; color: #f59e0b;">${statusIcon} ${statusText}</span>
+                </li>
+            `;
+        });
+        
+        if (unfinished.length > 5) {
+            materiList += `<li><em>... dan ${unfinished.length - 5} materi lainnya</em></li>`;
+        }
+        
+        body.innerHTML = `
+            <div>
+                <p style="margin-bottom: 12px; font-weight: bold;">📋 Kamu memiliki <span style="color: #ef4444;">${unfinished.length}</span> materi yang belum selesai:</p>
+                <ul style="margin: 0; padding-left: 16px;">${materiList}</ul>
+                <p style="margin-top: 12px; font-size: 11px; color: #64748b;">💡 Selesaikan materimu agar skor tersimpan!</p>
+            </div>
+        `;
+    }
+    
+    // Footer (hanya jika ada materi)
+    const footer = document.createElement('div');
+    footer.className = 'notif-popup-footer';
+    
+    if (count > 0) {
+        footer.innerHTML = `
+            <button class="notif-popup-btn notif-popup-btn-secondary" onclick="this.closest('.notif-popup').remove()">Nanti</button>
+            <button class="notif-popup-btn notif-popup-btn-primary" id="goToMateriBtn">Kerjakan Sekarang</button>
+        `;
+    } else {
+        footer.innerHTML = `
+            <button class="notif-popup-btn notif-popup-btn-primary" onclick="this.closest('.notif-popup').remove()">Tutup</button>
+        `;
+    }
+    
+    popup.appendChild(header);
+    popup.appendChild(body);
+    popup.appendChild(footer);
+    document.body.appendChild(popup);
+    currentNotifPopup = popup;
+    
+    // Event listener untuk tombol "Kerjakan Sekarang"
+    if (count > 0) {
+        const goBtn = document.getElementById('goToMateriBtn');
+        if (goBtn) {
+            goBtn.onclick = () => {
+                popup.remove();
+                currentNotifPopup = null;
+                showMateri();
+            };
+        }
+    }
+    
+    // Auto close setelah 5 detik (kecuali di-hover)
+    let autoCloseTimeout = setTimeout(() => {
+        if (currentNotifPopup === popup) {
+            popup.remove();
+            currentNotifPopup = null;
+        }
+    }, 5000);
+    
+    popup.addEventListener('mouseenter', () => {
+        clearTimeout(autoCloseTimeout);
+        popup.style.animation = 'none';
+    });
+    
+    popup.addEventListener('mouseleave', () => {
+        popup.style.animation = 'slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+        autoCloseTimeout = setTimeout(() => {
+            if (currentNotifPopup === popup) {
+                popup.remove();
+                currentNotifPopup = null;
+            }
+        }, 3000);
+    });
 }
+
+// Ganti fungsi showNotifications yang lama
+window.showNotifications = async function() {
+    const unfinished = await checkUnfinishedMaterials();
+    showNotificationPopup(unfinished);
+};
 
 function closeCustomNotif() {
     document.getElementById('customNotificationModal').classList.add('hidden');
