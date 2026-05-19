@@ -1712,6 +1712,40 @@ function openVirtualQuiz(jitsiRoomFromUrl = null, materiIdFromUrl = null) {
         });
     }
 }
+
+function closeVirtualQuiz() {
+    const modal = document.getElementById("virtualQuizModal");
+    if (modal) {
+        modal.classList.add("hidden");
+    }
+    
+    // Hentikan Jitsi
+    if (jitsiApi) {
+        try {
+            jitsiApi.executeCommand('hangup');
+            jitsiApi = null;
+        } catch(e) {
+            console.error('Error stopping Jitsi:', e);
+        }
+    }
+    
+    // Bersihkan container video
+    const container = document.getElementById("jitsiContainer");
+    if (container) {
+        container.innerHTML = '';
+    }
+    
+    // Reset state
+    currentVirtualMaterial = null;
+    virtualQuizAnswers = {};
+    
+    // Hapus parameter URL
+    const url = new URL(window.location);
+    url.searchParams.delete('jitsiRoom');
+    url.searchParams.delete('materiId');
+    window.history.pushState({}, '', url.pathname);
+}
+
 function renderVirtualQuiz(quiz) {
     const container = document.getElementById("virtualQuizContent"); 
     container.innerHTML = "";
@@ -1740,24 +1774,72 @@ function renderVirtualQuiz(quiz) {
                 virtualQuizAnswers[idx] = val;
                 const isCorrect = (val === q.correct);
                 
-                // Tampilkan feedback langsung (tanpa AI biar cepat)
                 const feedbackDiv = document.getElementById(`vq_feedback_${idx}`);
                 const userAnswerText = q.options[val];
                 const correctAnswerText = q.options[q.correct];
+                const correctLetter = String.fromCharCode(65+q.correct);
                 
+                // ========== FEEDBACK SUPER DETAIL DENGAN ANALOGI ==========
                 if (isCorrect) {
+                    // Generate penjelasan panjang untuk jawaban BENAR
+                    let penjelasan = q.explanation;
+                    if (!penjelasan) {
+                        penjelasan = generateDetailedExplanation(q.text, correctAnswerText, userAnswerText, true);
+                    }
+                    
                     feedbackDiv.innerHTML = `
-                        <div class="feedback-correct">
-                            ✅ <strong>Benar!</strong><br>
-                            Jawaban "${userAnswerText}" tepat.
+                        <div class="feedback-correct p-4 rounded-lg mt-3 bg-green-50 dark:bg-green-900/30 border-l-4 border-green-500">
+                            <div class="flex items-start gap-3">
+                                <span class="text-2xl">✅</span>
+                                <div class="flex-1">
+                                    <p class="font-bold text-green-700 dark:text-green-400 text-lg">BENAR! Jawabanmu tepat.</p>
+                                    <p class="text-md mt-1">Jawaban: <strong>"${userAnswerText}"</strong></p>
+                                    <div class="mt-3 p-3 bg-white dark:bg-slate-800 rounded-lg">
+                                        <p class="text-md font-semibold">📚 Penjelasan Lengkap:</p>
+                                        <p class="text-md leading-relaxed mt-1">${penjelasan}</p>
+                                    </div>
+                                    <div class="mt-2 text-sm text-green-600 dark:text-green-400">
+                                        💡 Selamat! Kamu memahami konsep ini dengan baik. Pertahankan!
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     `;
                 } else {
+                    // Generate penjelasan SUPER DETAIL untuk jawaban SALAH (pakai analogi)
+                    let penjelasan = q.explanation;
+                    if (!penjelasan) {
+                        penjelasan = generateDetailedExplanation(q.text, correctAnswerText, userAnswerText, false);
+                    }
+                    
                     feedbackDiv.innerHTML = `
-                        <div class="feedback-wrong">
-                            ❌ <strong>Kurang tepat!</strong><br>
-                            Jawaban yang benar adalah <strong>${String.fromCharCode(65+q.correct)}. ${correctAnswerText}</strong>.<br>
-                            ${q.explanation || 'Yuk, pelajari lagi materi ini!'}
+                        <div class="feedback-wrong p-4 rounded-lg mt-3 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500">
+                            <div class="flex items-start gap-3">
+                                <span class="text-2xl">❌</span>
+                                <div class="flex-1">
+                                    <p class="font-bold text-red-700 dark:text-red-400 text-lg">KURANG TEPAT!</p>
+                                    <p class="text-md mt-1">Jawaban Anda: <strong>"${userAnswerText}"</strong></p>
+                                    <p class="text-md">Jawaban yang benar: <strong class="text-green-600">${correctLetter}. ${correctAnswerText}</strong></p>
+                                    
+                                    <div class="mt-3 p-3 bg-white dark:bg-slate-800 rounded-lg">
+                                        <p class="text-md font-semibold">📚 Penjelasan Detail + Analogi:</p>
+                                        <p class="text-md leading-relaxed mt-1">${penjelasan}</p>
+                                    </div>
+                                    
+                                    <div class="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                                        <p class="text-md font-semibold">🎯 Rangkuman:</p>
+                                        <ul class="text-md list-disc list-inside mt-1 space-y-1">
+                                            <li>${correctAnswerText} adalah jawaban yang benar karena ${correctAnswerText.toLowerCase().split(' ')[0]} merupakan konsep inti</li>
+                                            <li>${userAnswerText} kurang tepat karena tidak sesuai dengan konteks pertanyaan</li>
+                                            <li>Ingat: ${getKeyTakeaway(q.text, correctAnswerText)}</li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <div class="mt-2 text-sm text-red-600 dark:text-red-400">
+                                        📖 Skor belum bertambah. Pelajari lagi materi ini, ya!
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     `;
                 }
@@ -1778,6 +1860,52 @@ function renderVirtualQuiz(quiz) {
         });
     });
 }
+
+// ========== FUNGSI BANTU UNTUK GENERATE PENJELASAN DETAIL ==========
+function generateDetailedExplanation(questionText, correctAnswer, userAnswer, isCorrect) {
+    // Bersihkan teks pertanyaan
+    let topic = questionText.replace(/^Apa |^Sebutkan |^Jelaskan |^Berapa |^Bagaimana /i, '').split('?')[0];
+    let keyword = correctAnswer.split(' ')[0].toLowerCase();
+    
+    if (isCorrect) {
+        return `${correctAnswer} adalah jawaban yang tepat untuk pertanyaan "${questionText}". 
+        
+Mengapa demikian? Karena ${topic.toLowerCase()} berkaitan langsung dengan konsep ${correctAnswer.toLowerCase()}. 
+Ketika kamu memahami bahwa ${keyword} adalah inti dari pembahasan, maka menjawab ${correctAnswer} adalah langkah yang tepat.
+
+Contoh sederhana: Jika ada pertanyaan "Apa yang membuat benda bergerak?", jawabannya adalah "gaya". 
+Sama seperti dalam soal ini, ${topic} merujuk pada ${correctAnswer.toLowerCase()}.
+
+Selamat! Pemahaman kamu sudah tepat. Terus pertahankan dan latih dengan soal-soal lain ya! 💪`;
+    } else {
+        // Penjelasan SUPER DETAIL untuk jawaban salah (seperti contoh di screenshot)
+        return `✖ Untuk menjawab pertanyaan "${questionText}", kita perlu memahami konsep dasarnya terlebih dahulu.
+        
+Jawaban yang benar adalah ${correctAnswer}, bukan ${userAnswer}.
+
+MENGAPA? Karena ${topic.toLowerCase()} secara khusus membahas tentang ${correctAnswer.toLowerCase()}. 
+${userAnswer} kurang tepat karena ${userAnswer.toLowerCase()} lebih berkaitan dengan aspek lain dari materi ini.
+
+📖 ANALOGI SEDERHANA:
+Bayangkan kamu sedang belajar tentang ${topic}. 
+- Jika kamu memilih ${correctAnswer}, itu seperti memahami inti dari materi.
+- Jika kamu memilih ${userAnswer}, itu seperti memahami hal yang berbeda, bukan yang ditanyakan.
+
+Seperti contoh: Jika ditanya "Apa yang menyebabkan benda jatuh ke bumi?", 
+jawaban yang benar adalah "gravitasi", bukan "massa" atau "berat". 
+Meskipun ketiganya terkait, hanya "gravitasi" yang tepat untuk pertanyaan tersebut.
+
+Kesimpulannya, ${correctAnswer} adalah jawaban yang benar karena ${keyword} merupakan konsep kunci dari ${topic}. 
+Coba ingat-ingat lagi materi tentang ini, fokus pada kata kunci "${keyword}" saat belajar.`;
+    }
+}
+
+function getKeyTakeaway(questionText, correctAnswer) {
+    let topic = questionText.replace(/^Apa |^Sebutkan |^Jelaskan |^Berapa |^Bagaimana /i, '').split('?')[0];
+    let keyword = correctAnswer.split(' ')[0].toLowerCase();
+    return `${keyword} adalah kunci untuk memahami ${topic.toLowerCase()}`;
+}
+
 async function submitVirtualQuiz() {
     if (!currentVirtualMaterial) return alert("Pilih materi dulu");
     let correct = 0; 
