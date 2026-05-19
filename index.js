@@ -41,6 +41,7 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   name: { type: String, default: '' },
+  role: { type: String, enum: ['user', 'admin'], default: 'user' }, // <-- TAMBAH INI
   nim: { type: String, default: '' },
   university: { type: String, default: '' },
   avatar: { type: String, default: '' },
@@ -219,7 +220,7 @@ app.get('/', (req, res) => {
 });
 
 app.post('/api/register', async (req, res) => {
-  const { email, password, konfirmasiPassword, name } = req.body;
+  const { email, password, konfirmasiPassword, name, role } = req.body;
   if (!email || !password || !konfirmasiPassword) return res.status(400).json({ message: 'Semua field wajib diisi' });
   if (password !== konfirmasiPassword) return res.status(400).json({ message: 'Password tidak sama' });
   try {
@@ -227,10 +228,27 @@ app.post('/api/register', async (req, res) => {
     if (userExist) return res.status(400).json({ message: 'Email sudah terdaftar' });
     const hashedPassword = await bcrypt.hash(password, 10);
     const userName = name && name.trim() ? name : email.split('@')[0];
-    const userBaru = new User({ email, password: hashedPassword, name: userName });
+    const userRole = role === 'admin' ? 'admin' : 'user'; // <-- TAMBAH VALIDASI ROLE
+    
+    const userBaru = new User({ 
+      email, 
+      password: hashedPassword, 
+      name: userName,
+      role: userRole  // <-- SIMPAN ROLE
+    });
     await userBaru.save();
-    const token = jwt.sign({ userId: userBaru._id, email: userBaru.email, name: userBaru.name }, 'SECRET_KEY', { expiresIn: '7d' });
-    res.json({ message: 'Registrasi berhasil', token, user: { email: userBaru.email, name: userBaru.name } });
+    
+    const token = jwt.sign(
+      { userId: userBaru._id, email: userBaru.email, name: userBaru.name, role: userBaru.role }, 
+      'SECRET_KEY', 
+      { expiresIn: '7d' }
+    );
+    
+    res.json({ 
+      message: 'Registrasi berhasil', 
+      token, 
+      user: { email: userBaru.email, name: userBaru.name, role: userBaru.role } 
+    });
   } catch (error) {
     res.status(500).json({ message: 'Terjadi error', error: error.message });
   }
@@ -244,8 +262,23 @@ app.post('/api/login', async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: 'Password salah' });
-    const token = jwt.sign({ userId: user._id, email: user.email, name: user.name }, 'SECRET_KEY', { expiresIn: '7d' });
-    res.json({ message: 'Login berhasil', token, user: { email: user.email, name: user.name } });
+    
+    // Tambahkan role ke token JWT
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, name: user.name, role: user.role }, 
+      'SECRET_KEY', 
+      { expiresIn: '7d' }
+    );
+    
+    res.json({ 
+      message: 'Login berhasil', 
+      token, 
+      user: { 
+        email: user.email, 
+        name: user.name,
+        role: user.role  // <-- KIRIM ROLE KE FRONTEND
+      } 
+    });
   } catch (error) {
     res.status(500).json({ message: 'Terjadi error', error: error.message });
   }

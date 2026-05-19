@@ -45,6 +45,7 @@
     </div>
 
     <script>
+        
         const API = "https://belajaryuk-production.up.railway.app/api";
 
         function showLogin() {
@@ -81,14 +82,16 @@
                 alert('Respons dari server tidak mengandung token. Periksa backend.');
                 return;
             }
-            // ✅ Simpan token dan user terlebih dahulu
+            
+            // ✅ Simpan token, user, dan role
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
+            localStorage.setItem('userRole', data.user.role);  // <-- TAMBAHKAN INI
             
             console.log('Token tersimpan:', localStorage.getItem('token'));
-            console.log('User tersimpan:', localStorage.getItem('user'));
+            console.log('User Role:', data.user.role);  // <-- TAMBAHKAN LOG INI
             
-            // ✅ Redirect berdasarkan role setelah data tersimpan
+            // ✅ Redirect berdasarkan role
             if (data.user.role === 'admin') {
                 window.location.href = 'admin.html';
             } else {
@@ -102,7 +105,6 @@
         alert('Error: Pastikan backend berjalan di "https://belajaryuk-production.up.railway.app/api" (port 80) melalui proxy Laragon/XAMPP, atau backend Node.js di port 3000 dengan CORS yang benar.');
     }
 }
-
 
 
         async function registerUser() {
