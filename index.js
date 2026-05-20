@@ -20,7 +20,7 @@ const io = new Server(server, {
 
 // MIDDLEWARE
 app.use(cors({
-    origin: "https://belajaryuk-production-74c4.up.railway.app/"
+    origin: "https://belajaryuk-production-74c4.up.railway.app"
 }));
 app.use(express.static(path.join(__dirname, 'FRONTEND')));
 app.use(express.json());
