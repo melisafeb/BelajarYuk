@@ -313,7 +313,7 @@
             
             <!-- Footer -->
             <div class="text-center text-slate-500 text-xs mt-8 pt-4 border-t border-white/10">
-                BelajarYuk - Dive In, Genius Out! 
+                BelajarYuk - Dive In, Genius Out! 🚀
             </div>
         </div>
     </div>
@@ -417,7 +417,7 @@
                 
                 if (res.ok) {
                     if (!data.token) {
-                        showToast('Token tidak ditemukan', 'error');
+                        showToast('❌ Token tidak ditemukan', 'error');
                         return;
                     }
                     
@@ -439,7 +439,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                showToast(' Error: Server tidak merespons', 'error');
+                showToast('❌ Error: Server tidak merespons', 'error');
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
@@ -455,25 +455,25 @@
             const terms = document.getElementById('terms').checked;
             
             if (!name || !email || !password || !confirm) {
-                showToast('Semua field harus diisi', 'warning');
+                showToast('⚠️ Semua field harus diisi', 'warning');
                 return;
             }
             if (password.length < 8) {
-                showToast('Password minimal 8 karakter', 'warning');
+                showToast('⚠️ Password minimal 8 karakter', 'warning');
                 return;
             }
             if (password !== confirm) {
-                showToast('Password tidak cocok', 'warning');
+                showToast('⚠️ Password tidak cocok', 'warning');
                 return;
             }
             if (!terms) {
-                showToast(' Setujui syarat & ketentuan', 'warning');
+                showToast('⚠️ Setujui syarat & ketentuan', 'warning');
                 return;
             }
             
             const btn = event.target.closest('button');
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="animate-pulse"> Memproses...</span>';
+            btn.innerHTML = '<span class="animate-pulse">⏳ Memproses...</span>';
             btn.disabled = true;
             
             try {
@@ -499,7 +499,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                showToast(' Error: Server tidak merespons', 'error');
+                showToast('❌ Error: Server tidak merespons', 'error');
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
