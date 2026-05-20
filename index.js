@@ -20,8 +20,11 @@ const io = new Server(server, {
 
 // MIDDLEWARE
 app.use(cors({
-    origin: "https://belajaryuk-production.up.railway.app"
+    origin: "https://belajaryuk-production-74c4.up.railway.app/",
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
 }));
+
 app.use(express.static(path.join(__dirname, 'FRONTEND')));
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
@@ -862,7 +865,7 @@ app.post('/api/profile/avatar', verifyToken, uploadAvatar.single('avatar'), asyn
   const avatarPath = `/uploads/avatars/${req.file.filename}`;
   try {
     await User.findByIdAndUpdate(req.user.userId, { avatar: avatarPath });
-    res.json({ avatarUrl: `https://belajaryuk-production.up.railway.app/${avatarPath}` });
+    res.json({ avatarUrl: `https://belajaryuk-production-74c4.up.railway.app/${avatarPath}` });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -1141,7 +1144,7 @@ app.delete('/api/admin/materi/:id', verifyToken, isAdmin, async (req, res) => {
 });
 
 // ====================== START SERVER ======================
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
   console.log(`🚀 Server jalan di port ${PORT}`);
 });
