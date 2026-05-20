@@ -1,153 +1,506 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-
-<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1" rel="stylesheet"/>
-
-<script>
-tailwind.config = {
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        primary: "#2b7cee",
-        "background-light": "#f6f7f8",
-        "background-dark": "#101822",
-      },
-      fontFamily: {
-        display: ["Lexend"]
-      },
-      borderRadius: {
-        DEFAULT: "0.25rem",
-        lg: "0.5rem",
-        xl: "0.75rem",
-        full: "9999px"
-      }
-    }
-  }
-}
-</script>
-
-<style>
-body {
-  font-family: 'Lexend', sans-serif;
-  background: #0a0f18;
-}
-.hero-gradient {
-  background:
-    radial-gradient(circle at 0% 0%, rgba(43, 124, 238, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 100% 100%, rgba(238, 43, 123, 0.15) 0%, transparent 50%);
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>BelajarYuk - Belajar Interaktif dengan AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+    <!-- GSAP CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Lexend', sans-serif;
+            overflow-x: hidden;
+        }
+        
+        /* Flow Section Styles */
+        .flow-section {
+            position: relative;
+            min-height: 100vh;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .flow-inner {
+            position: relative;
+            display: flex;
+            min-height: 100vh;
+            width: 100%;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 1.5rem;
+            padding: clamp(2rem, 8vw, 4vw) 4vw 4vw 4vw;
+            transform-origin: bottom left;
+        }
+        
+        /* Swipe Background - Efek gradien bergerak per section */
+        @keyframes gradientSwipe1 {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes gradientSwipe2 {
+            0% { background-position: 100% 50%; }
+            50% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+        
+        .swipe-bg-1 {
+            background: linear-gradient(135deg, #0f172a, #1e1b4b, #2b7cee20, #1e1b4b, #0f172a);
+            background-size: 400% 400%;
+            animation: gradientSwipe1 8s ease infinite;
+        }
+        
+        .swipe-bg-2 {
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460, #16213e, #1a1a2e);
+            background-size: 400% 400%;
+            animation: gradientSwipe2 10s ease infinite;
+        }
+        
+        .swipe-bg-3 {
+            background: linear-gradient(135deg, #0f3460, #1a1a2e, #e94560, #1a1a2e, #0f3460);
+            background-size: 400% 400%;
+            animation: gradientSwipe1 12s ease infinite;
+        }
+        
+        .swipe-bg-4 {
+            background: linear-gradient(135deg, #16213e, #0f3460, #533483, #0f3460, #16213e);
+            background-size: 400% 400%;
+            animation: gradientSwipe2 9s ease infinite;
+        }
+        
+        .swipe-bg-5 {
+            background: linear-gradient(135deg, #2b7cee, #1a5bbf, #0f172a, #1a5bbf, #2b7cee);
+            background-size: 400% 400%;
+            animation: gradientSwipe1 7s ease infinite;
+        }
+        
+        /* Swipe Text Animation */
+        .swipe-text {
+            display: inline-block;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .swipe-text span {
+            display: inline-block;
+            animation: textReveal 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+        }
+        
+        @keyframes textReveal {
+            0% {
+                transform: translateY(100%);
+                opacity: 0;
+                filter: blur(10px);
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+                filter: blur(0);
+            }
+        }
+        
+        /* Efek karakter berurutan */
+        .swipe-text-sequential span {
+            display: inline-block;
+            animation: charReveal 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+            opacity: 0;
+        }
+        
+        @keyframes charReveal {
+            0% {
+                transform: translateX(-30px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Efek slide untuk judul */
+        .title-swipe {
+            animation: titleSlide 0.8s ease-out forwards;
+        }
+        
+        @keyframes titleSlide {
+            0% {
+                transform: translateX(-100px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Smooth scroll */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #2b7cee;
+            border-radius: 10px;
+        }
+        
+        /* Floating animation untuk tombol */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .btn-float {
+            animation: float 3s ease infinite;
+        }
+    </style>
 </head>
+<body>
+    <!-- Flow Art Container -->
+    <main id="flowArt" class="w-full overflow-x-hidden">
+        
+        <!-- Section 1 - Hero -->
+        <section class="flow-section swipe-bg-1" data-section="0" style="color: white; z-index: 1;">
+            <div class="flow-inner" data-inner>
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-primary animate-pulse">01 — Selamat Datang</p>
+                <hr class="my-[2vw] border-none border-t border-white/20" />
+                <div class="swipe-text-sequential">
+                    <h1 class="text-[clamp(3rem,12vw,8rem)] font-bold leading-[0.85] uppercase tracking-tight">
+                        Belajar
+                        <br />
+                        Jadi
+                        <br />
+                        Lebih Mudah
+                    </h1>
+                </div>
+                <hr class="my-[2vw] border-none border-t border-white/20" />
+                <p class="mt-auto max-w-[50ch] text-[clamp(1rem,2.5vw,1.5rem)] font-normal leading-relaxed">
+                    Platform belajar interaktif dengan kecerdasan buatan. Upload materi, dapatkan ringkasan & kuis instan!
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 mt-8">
+                    <button onclick="window.location.href='login.html'" class="bg-primary hover:bg-primary/80 text-white font-bold py-3 px-8 rounded-xl transition-all transform hover:scale-105 shadow-lg btn-float">
+                        Mulai Belajar
+                    </button>
+                    <button onclick="scrollToSection(1)" class="bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-bold py-3 px-8 rounded-xl transition-all border border-white/30">
+                        Pelajari Selengkapnya
+                    </button>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Section 2 - AI Tutor -->
+        <section class="flow-section swipe-bg-2" data-section="1" style="color: white; z-index: 2;">
+            <div class="flow-inner" data-inner>
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-primary">02 — AI Tutor</p>
+                <hr class="my-[2vw] border-none border-t border-white/20" />
+                <div class="title-swipe">
+                    <h2 class="text-[clamp(2.5rem,10vw,6rem)] font-bold leading-[0.85] uppercase tracking-tight">
+                        Belajar
+                        <br />
+                        Dengan
+                        <br />
+                        AI Pintar
+                    </h2>
+                </div>
+                <hr class="my-[2vw] border-none border-t border-white/20" />
+                <p class="max-w-[50ch] text-[clamp(1rem,2.5vw,1.5rem)] font-normal leading-relaxed">
+                    Tanyakan apapun! AI tutor siap membantu memahami materi pelajaran dengan penjelasan yang mudah dimengerti.
+                </p>
+                <hr class="my-[2vw] border-none border-t border-white/20" />
+                <div class="flex flex-wrap gap-[3vw]">
+                    <div class="min-w-[180px] flex-1 hover:scale-105 transition-transform duration-300">
+                        <p class="mb-2 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-2xl">step</span>
+                            Step by Step
+                        </p>
+                        <p class="text-[clamp(0.85rem,1.3vw,1.05rem)] leading-relaxed opacity-75">
+                            Pemahaman bertahap dengan penjelasan detail dan contoh konkret.
+                        </p>
+                    </div>
+                    <div class="min-w-[180px] flex-1 hover:scale-105 transition-transform duration-300">
+                        <p class="mb-2 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-2xl">quiz</span>
+                            Kuis Interaktif
+                        </p>
+                        <p class="text-[clamp(0.85rem,1.3vw,1.05rem)] leading-relaxed opacity-75">
+                            Uji pemahamanmu dengan soal pilihan ganda dan feedback instan.
+                        </p>
+                    </div>
+                    <div class="min-w-[180px] flex-1 hover:scale-105 transition-transform duration-300">
+                        <p class="mb-2 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-2xl">auto_awesome</span>
+                            Penjelasan Cerdas
+                        </p>
+                        <p class="text-[clamp(0.85rem,1.3vw,1.05rem)] leading-relaxed opacity-75">
+                            Dapatkan analogi sederhana dan contoh nyata untuk setiap konsep.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Section 3 - Upload Materi -->
+        <section class="flow-section swipe-bg-3" data-section="2" style="color: white; z-index: 3;">
+            <div class="flow-inner" data-inner>
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-primary">03 — Upload Materi</p>
+                <hr class="my-[2vw] border-none border-t border-white/20" />
+                <div class="title-swipe">
+                    <h2 class="text-[clamp(2.5rem,10vw,6rem)] font-bold leading-[0.85] uppercase tracking-tight">
+                        Upload
+                        <br />
+                        Materi
+                        <br />
+                        &nbsp;
+                    </h2>
+                </div>
+                <hr class="my-[2vw] border-none border-t border-white/20" />
+                <p class="max-w-[50ch] text-[clamp(1rem,2.5vw,1.5rem)] font-normal leading-relaxed">
+                    Upload PDF, DOC, atau TXT. AI akan membuat ringkasan dan soal kuis secara otomatis!
+                </p>
+                <hr class="my-[2vw] border-none border-t border-white/20" />
+                <div class="flex flex-wrap gap-[3vw]">
+                    <div class="min-w-[180px] flex-1 hover:scale-105 transition-transform duration-300">
+                        <p class="mb-2 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-2xl">description</span>
+                            PDF/DOC/TXT
+                        </p>
+                        <p class="text-[clamp(0.85rem,1.3vw,1.05rem)] leading-relaxed opacity-75">
+                            Dukung berbagai format dokumen untuk kebutuhan belajarmu.
+                        </p>
+                    </div>
+                    <div class="min-w-[180px] flex-1 hover:scale-105 transition-transform duration-300">
+                        <p class="mb-2 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-2xl">summarize</span>
+                            Ringkasan Otomatis
+                        </p>
+                        <p class="text-[clamp(0.85rem,1.3vw,1.05rem)] leading-relaxed opacity-75">
+                            AI membaca dan merangkum poin-poin penting dari materimu.
+                        </p>
+                    </div>
+                    <div class="min-w-[180px] flex-1 hover:scale-105 transition-transform duration-300">
+                        <p class="mb-2 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-2xl">quiz</span>
+                            Generate Kuis
+                        </p>
+                        <p class="text-[clamp(0.85rem,1.3vw,1.05rem)] leading-relaxed opacity-75">
+                            Soal pilihan ganda dibuat otomatis berdasarkan konten dokumen.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Section 4 - Ruang Belajar -->
+        <section class="flow-section swipe-bg-4" data-section="3" style="color: white; z-index: 4;">
+            <div class="flow-inner" data-inner>
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-primary">04 — Ruang Belajar</p>
+                <hr class="my-[2vw] border-none border-t border-white/20" />
+                <div class="title-swipe">
+                    <h2 class="text-[clamp(2.5rem,10vw,6rem)] font-bold leading-[0.85] uppercase tracking-tight">
+                        Belajar
+                        <br />
+                        Bersama
+                        <br />
+                        Teman
+                    </h2>
+                </div>
+                <hr class="my-[2vw] border-none border-t border-white/20" />
+                <p class="max-w-[50ch] text-[clamp(1rem,2.5vw,1.5rem)] font-normal leading-relaxed">
+                    Belajar bersama teman! Video call, chat grup, dan kuis kolaboratif dalam satu ruang.
+                </p>
+                <hr class="my-[2vw] border-none border-t border-white/20" />
+                <div class="flex flex-wrap gap-[3vw]">
+                    <div class="min-w-[180px] flex-1 hover:scale-105 transition-transform duration-300">
+                        <p class="mb-2 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-2xl">video_call</span>
+                            Video Call
+                        </p>
+                        <p class="text-[clamp(0.85rem,1.3vw,1.05rem)] leading-relaxed opacity-75">
+                            Diskusi langsung dengan teman sekelas melalui integrasi Jitsi.
+                        </p>
+                    </div>
+                    <div class="min-w-[180px] flex-1 hover:scale-105 transition-transform duration-300">
+                        <p class="mb-2 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-2xl">chat</span>
+                            Chat Grup
+                        </p>
+                        <p class="text-[clamp(0.85rem,1.3vw,1.05rem)] leading-relaxed opacity-75">
+                            Berbagi ide dan bertanya dengan sesama anggota ruangan.
+                        </p>
+                    </div>
+                    <div class="min-w-[180px] flex-1 hover:scale-105 transition-transform duration-300">
+                        <p class="mb-2 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-2xl">groups</span>
+                            Kuis Kolaboratif
+                        </p>
+                        <p class="text-[clamp(0.85rem,1.3vw,1.05rem)] leading-relaxed opacity-75">
+                            Kerjakan kuis bersama dan lihat skor anggota lainnya.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Section 5 - Call to Action -->
+        <section class="flow-section swipe-bg-5" data-section="4" style="color: white; z-index: 5;">
+            <div class="flow-inner" data-inner>
+                <p class="text-xs font-bold uppercase tracking-[0.2em] animate-pulse">05 — Siap Memulai?</p>
+                <hr class="my-[2vw] border-none border-t border-white/30" />
+                <div class="title-swipe">
+                    <h2 class="text-[clamp(2.5rem,10vw,6rem)] font-bold leading-[0.85] uppercase tracking-tight">
+                        Siap
+                        <br />
+                        Untuk
+                        <br />
+                        Belajar?
+                    </h2>
+                </div>
+                <hr class="my-[2vw] border-none border-t border-white/30" />
+                <p class="mt-auto max-w-[50ch] text-[clamp(1rem,2.5vw,1.5rem)] font-normal leading-relaxed">
+                    Bergabunglah sekarang dan rasakan pengalaman belajar yang lebih interaktif dengan bantuan AI.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 mt-8">
+                    <button onclick="window.location.href='login.html'" class="bg-white text-primary hover:bg-white/90 font-bold py-3 px-8 rounded-xl transition-all transform hover:scale-105 shadow-lg btn-float">
+                        Masuk ke Akun
+                    </button>
+                    <button onclick="window.location.href='login.html?tab=register'" class="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white font-bold py-3 px-8 rounded-xl transition-all border border-white/30">
+                        Daftar Sekarang
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
 
-<body class="bg-[#0a0f18] text-slate-100 min-h-screen dark">
-
-<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
-
-<!-- NAVBAR -->
-<header class="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-  <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-
-    <div class="flex items-center gap-2 cursor-pointer" onclick="goLogin()">
-      <div class="size-10 bg-primary rounded-xl flex items-center justify-center text-white">
-        <span class="material-symbols-outlined text-2xl">school</span>
-      </div>
-      <h2 class="text-2xl font-bold tracking-tight">BelajarYuk</h2>
-    </div>
-
-    <nav class="hidden md:flex items-center gap-10">
-      <a onclick="goLogin()" class="text-sm font-semibold text-primary cursor-pointer">Beranda</a>
-      <a onclick="goLogin()" class="text-sm font-medium text-slate-600 hover:text-primary cursor-pointer transition-colors">
-        Unggah Materi
-      </a>
-      <a onclick="goLogin()" class="text-sm font-medium text-slate-600 hover:text-primary cursor-pointer transition-colors">
-        Ringkasan Materi
-      </a>
-    </nav>
-
-    <div class="flex items-center gap-4">
-      <button onclick="goLogin()" class="py-2 text-sm font-bold hover:text-primary transition-colors">
-        Login
-      </button>
-    </div>
-
-  </div>
-</header>
-
-<!-- HERO -->
-<main class="flex-1 flex flex-col items-center justify-center px-6 pt-32 pb-20 hero-gradient relative">
-
-  <div class="max-w-4xl w-full text-center">
-    <h1 class="text-6xl md:text-8xl font-black tracking-tight mb-8">
-      Belajar <span class="text-primary">Lebih Cerdas</span> Dengan BelajarYuk
-    </h1>
-
-    <p class="text-xl text-slate-600 max-w-2xl mx-auto mb-12">
-      Upload materi PDF dan biarkan BelajarYuk membantu kamu memahami inti materi dengan cepat.
-    </p>
-
-    <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-      <button onclick="goLogin()" class="px-10 py-5 bg-primary hover:bg-primary/90 text-white rounded-2xl text-lg font-bold shadow-xl transition-all">
-        Mulai BelajarYuk
-      </button>
-    </div>
-  </div>
-
-</main>
-
-<!-- FEATURES -->
-<section class="py-24 bg-background-dark">
-  <div class="max-w-5xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-16 justify-center">
-
-    <!-- Ringkasan Materi -->
-    <div class="text-center p-8 rounded-3xl hover:bg-slate-50 transition hover:scale-105">
-      <div class="text-pink-500 text-4xl mb-4">
-        <span class="material-symbols-outlined">auto_stories</span>
-      </div>
-      <h3 class="text-xl font-bold mb-2">Ringkasan Materi</h3>
-      <p class="text-slate-500">
-        AI merangkum materi panjang menjadi poin penting untuk belajar ujian.
-      </p>
-    </div>
-
-    <!-- Upload PDF -->
-    <div class="text-center p-8 rounded-3xl hover:bg-slate-50 transition hover:scale-105">
-      <div class="text-amber-500 text-4xl mb-4">
-        <span class="material-symbols-outlined">cloud_upload</span>
-      </div>
-      <h3 class="text-xl font-bold mb-2">Upload PDF</h3>
-      <p class="text-slate-500">
-        Upload materi kuliah dan sistem akan otomatis membuat kuis dari dokumen tersebut.
-      </p>
-    </div>
-
-  </div>
-</section>
-
-<!-- FOOTER -->
-<footer class="border-t py-10 text-center text-slate-500">
-  <p>BelajarYuk-Dive In, Genius Out!</p>
-</footer>
-
-</div>
-
-<script>
-function goLogin(){
-  window.location.href = "login.html";
-}
-
-function goUpload(){ goLogin(); }
-function goTutor(){ goLogin(); }
-function goSummary(){ goLogin(); }
-function startLearning(){ goLogin(); }
-</script>
-
+    <script>
+        // ====================== GSAP STORY SCROLL ======================
+        document.addEventListener('DOMContentLoaded', function() {
+            gsap.registerPlugin(ScrollTrigger);
+            
+            const sections = document.querySelectorAll('.flow-section');
+            const sectionsArray = Array.from(sections);
+            
+            if (sectionsArray.length === 0) return;
+            
+            const triggers = [];
+            
+            // Set z-index untuk setiap section
+            sectionsArray.forEach((section, i) => {
+                gsap.set(section, { zIndex: i + 1 });
+                
+                const inner = section.querySelector('[data-inner]');
+                if (!inner) return;
+                
+                // Efek rotasi untuk section berikutnya (kecuali section pertama)
+                if (i > 0) {
+                    gsap.set(inner, { rotation: 30, transformOrigin: 'bottom left' });
+                    
+                    const tween = gsap.to(inner, {
+                        rotation: 0,
+                        ease: 'none',
+                        scrollTrigger: {
+                            trigger: section,
+                            start: 'top bottom',
+                            end: 'top 25%',
+                            scrub: true,
+                        }
+                    });
+                    if (tween.scrollTrigger) triggers.push(tween.scrollTrigger);
+                }
+                
+                // Pin section saat di-scroll (kecuali section terakhir)
+                if (i < sectionsArray.length - 1) {
+                    const pinTrigger = ScrollTrigger.create({
+                        trigger: section,
+                        start: 'bottom bottom',
+                        end: 'bottom top',
+                        pin: true,
+                        pinSpacing: false,
+                    });
+                    triggers.push(pinTrigger);
+                }
+            });
+            
+            // Refresh ScrollTrigger
+            ScrollTrigger.refresh();
+            
+            // Animasi teks saat section masuk viewport
+            const observerOptions = {
+                threshold: 0.3,
+                rootMargin: '0px'
+            };
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // Animasi untuk title-swipe
+                        const titles = entry.target.querySelectorAll('.title-swipe');
+                        titles.forEach(title => {
+                            title.style.animation = 'none';
+                            title.offsetHeight; // Trigger reflow
+                            title.style.animation = 'titleSlide 0.8s ease-out forwards';
+                        });
+                        
+                        // Animasi untuk swipe-text-sequential
+                        const sequentialTexts = entry.target.querySelectorAll('.swipe-text-sequential');
+                        sequentialTexts.forEach(text => {
+                            const chars = text.querySelectorAll('span');
+                            chars.forEach((char, idx) => {
+                                char.style.animation = 'none';
+                                char.offsetHeight;
+                                char.style.animation = `charReveal 0.4s ease-out ${idx * 0.03}s forwards`;
+                            });
+                        });
+                    }
+                });
+            }, observerOptions);
+            
+            sections.forEach(section => observer.observe(section));
+            
+            // Cek preferensi reduced motion
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+            if (prefersReducedMotion.matches) {
+                // Nonaktifkan semua ScrollTrigger jika user memilih reduced motion
+                triggers.forEach(trigger => trigger.kill());
+            }
+        });
+        
+        // Fungsi untuk scroll ke section berikutnya
+        function scrollToSection(index) {
+            const sections = document.querySelectorAll('.flow-section');
+            if (sections[index]) {
+                sections[index].scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+        
+        // Cek parameter URL untuk tab register
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('tab') === 'register') {
+            setTimeout(() => {
+                if (window.location.pathname.includes('index.html') || window.location.pathname === '/') {
+                    window.location.href = 'login.html?tab=register';
+                }
+            }, 100);
+        }
+    </script>
 </body>
 </html>
