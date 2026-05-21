@@ -1820,38 +1820,58 @@ for (let i = 0; i < total; i++) {
         }
     }
 }
-        async function uploadDocument() {
-            const fileInput = document.getElementById("fileUploadInput");
-            if (!fileInput.files.length) {
-              return;
-           }
-            const file = fileInput.files[0];
-            const formData = new FormData();
-            formData.append("file", file);
-            document.getElementById("loadingIndicator").classList.remove("hidden");
-            try {
-                const token = getToken();
-                const res = await fetch(`${API_BASE}/upload`, {
-                    method: "POST",
-                    headers: { "x-auth-token": token },
-                    body: formData
-                });
-                if (!res.ok) throw new Error(await res.text());
-                const data = await res.json();
-                alert(data.message || "Dokumen berhasil diproses!");
-                await loadMaterials();
-                fileInput.value = "";
-                if (data.materi && data.materi._id) {
-                    loadMaterialById(data.materi._id);
-                }
-                loadStats();
-            } catch (e) {
-                alert("Gagal: " + e.message);
-            } finally {
-                document.getElementById("loadingIndicator").classList.add("hidden");
+
+async function uploadDocument() {
+    const fileInput = document.getElementById("fileUploadInput");
+    if (!fileInput.files.length) {
+        showCustomNotif("⚠️ Pilih file dulu", "warning");
+        return;
+    }
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+    document.getElementById("loadingIndicator").classList.remove("hidden");
+    
+    try {
+        const token = getToken();
+        const res = await fetch(`${API_BASE}/upload`, {
+            method: "POST",
+            headers: { "x-auth-token": token },
+            body: formData
+        });
+        
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        
+        showCustomNotif("✅ Dokumen berhasil diproses!", "success");
+        await loadMaterials();  // Refresh daftar materi
+        
+        // 🔴 PERBAIKAN: Pastikan langsung menampilkan kuis
+        if (data.materi && data.materi._id) {
+            await loadMaterialById(data.materi._id);  // Tampilkan kuis
+            // Scroll ke area hasil
+            document.getElementById("resultArea").classList.remove("hidden");
+            document.getElementById("resultArea").scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+            // Coba cari materi terbaru dari list
+            if (materials.length > 0) {
+                const latestMateri = materials[0]; // Materi terbaru
+                await loadMaterialById(latestMateri._id);
+                document.getElementById("resultArea").classList.remove("hidden");
+                document.getElementById("resultArea").scrollIntoView({ behavior: "smooth", block: "start" });
             }
         }
-
+        
+        fileInput.value = "";
+        loadStats();
+        
+    } catch (e) {
+        showCustomNotif("❌ Gagal: " + e.message, "error");
+    } finally {
+        document.getElementById("loadingIndicator").classList.add("hidden");
+    }
+}
+   
         // ====================== RINGKASAN ======================
         async function loadAllSummaries() {
             await loadMaterials();
