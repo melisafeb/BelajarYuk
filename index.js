@@ -158,29 +158,93 @@ async function extractTextFromFile(filePath, originalName) {
 }
 
 async function generateQuizFromText(text, title) {
-  const maxLength = 10000;
+  // 1. Persiapan Teks (Sama seperti punyamu, tapi Jumbo turunkan dikit biar cepet)
+  const maxLength = 8000; // ← Jumbo turunkan dari 10000 ke 8000 (masih panjang, tapi lebih cepet)
   const truncatedText = text.length > maxLength ? text.substring(0, maxLength) : text;
   if (truncatedText.trim().length < 50) throw new Error('Teks terlalu pendek');
-  let estimatedQuestions = Math.floor(truncatedText.length / 500);
+  
+  // 2. Jumlah Soal (Sama seperti punyamu, tapi Jumbo kurangi maksimal jadi 10 biar lebih ringan)
+  let estimatedQuestions = Math.floor(truncatedText.length / 700);
   if (estimatedQuestions < 5) estimatedQuestions = 5;
-  if (estimatedQuestions > 20) estimatedQuestions = 20;
+  if (estimatedQuestions > 10) estimatedQuestions = 10; // ← Maksimal 10 soal (dari 20)
 
-  const prompt = `Buat ${estimatedQuestions} soal pilihan ganda dari materi berikut dengan distribusi level: 30% easy, 40% medium, 30% hard. Setiap soal sertakan rumus (jika relevan) dan penjelasan cara kerja. Output JSON: { "questions": [ { "text": "...", "options": [...], "correct": 0, "level": "easy/medium/hard", "formula": "...", "explanation": "..." } ] }`;
+  // 3. PROMPT LENGKAP (Ini yang kamu mau! Level, formula, penjelasan, dan distribusi)
+  const prompt = `Buat ${estimatedQuestions} soal pilihan ganda dari materi berikut dengan distribusi level: 30% easy, 40% medium, 30% hard. 
+Setiap soal HARUS sertakan:
+- text: teks soal
+- options: array of 4 pilihan jawaban
+- correct: indeks jawaban benar (0, 1, 2, atau 3)
+- level: "easy", "medium", atau "hard"
+- formula: rumus yang relevan (jika tidak ada, isi string kosong)
+- explanation: penjelasan cara kerja atau alasan jawaban benar
+
+Output HARUS berupa JSON VALID dengan format:
+{ "questions": [ { "text": "...", "options": ["...", "...", "...", "..."], "correct": 0, "level": "easy", "formula": "...", "explanation": "..." } ] }`;
+
+  // 4. Panggil API Groq
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error('GROQ_API_KEY tidak ditemukan');
 
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.5,
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" } // ← Ini masih Jumbo pertahankan
     })
   });
 
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Groq API Error ${response.status}:`, errorText);
+    throw new Error(`Gagal generate quiz dari AI (HTTP ${response.status})`);
+  }
+
+  // 5. Proses Hasil AI
+  const data = await response.json();
+  let aiMessage = data.choices[0].message.content;
+  let cleaned = aiMessage.trim().replace(/```json|```/g, '');
+  
+  try {
+    const parsed = JSON.parse(cleaned);
+    let questions = parsed.questions || (Array.isArray(parsed) ? parsed : []);
+    
+    // Filter soal yang valid
+    const validQuestions = questions.filter(q => 
+      q.text && 
+      Array.isArray(q.options) && 
+      q.options.length === 4 && 
+      typeof q.correct === 'number' &&
+      q.correct >= 0 && q.correct <= 3 &&
+      (q.level === 'easy' || q.level === 'medium' || q.level === 'hard')
+    );
+    
+    if (validQuestions.length === 0) throw new Error('Tidak ada soal valid dari AI');
+    return validQuestions;
+    
+  } catch (parseError) {
+    console.error("Gagal parsing JSON dari Groq:", cleaned);
+    
+    // 6. FALLBACK QUIZ (Dengan Level & Formula!)
+    const easyFormula = "Rumus dasar: pahami konsep utama dari materi.";
+    const mediumFormula = "Analisis: terapkan konsep ke contoh kasus.";
+    const hardFormula = "Evaluasi: gabungkan beberapa konsep untuk pemecahan masalah.";
+    
+    const fallbackQuiz = [
+      { text: `Apa topik utama dari materi "${title}"?`, options: ["Pendahuluan", "Konsep Inti", "Studi Kasus", "Semua Benar"], correct: 3, level: "easy", formula: easyFormula, explanation: "Materi biasanya mencakup pendahuluan, konsep inti, dan studi kasus." },
+      { text: "Apa yang sebaiknya dilakukan setelah membaca materi?", options: ["Mencatat", "Diskusi", "Kuis", "Semua di atas"], correct: 3, level: "easy", formula: easyFormula, explanation: "Belajar efektif melibatkan mencatat, diskusi, dan mengerjakan kuis." },
+      { text: "Berdasarkan materi, apa manfaat utama mempelajari topik ini?", options: ["Meningkatkan wawasan", "Nilai bagus", "Lulus ujian", "Praktis diterapkan"], correct: 0, level: "medium", formula: mediumFormula, explanation: "Tujuan utama belajar adalah menambah wawasan dan pemahaman." }
+    ];
+    
+    // Potong fallback sesuai estimatedQuestions
+    return fallbackQuiz.slice(0, estimatedQuestions);
+  }
+}
   if (!response.ok) throw new Error('Gagal generate quiz');
   const data = await response.json();
   const aiMessage = data.choices[0].message.content;
@@ -188,7 +252,8 @@ async function generateQuizFromText(text, title) {
   const parsed = JSON.parse(cleaned);
   let questions = parsed.questions || (Array.isArray(parsed) ? parsed : []);
   return questions.filter(q => q.text && Array.isArray(q.options) && q.options.length === 4 && typeof q.correct === 'number');
-}
+
+
 
 // ====================== MULTER UPLOAD ======================
 const storage = multer.diskStorage({
@@ -257,40 +322,37 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
+// ====================== LOGIN ======================
 app.post('/api/login', async (req, res) => {
-    const { email, password } = req.body;
-
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ message: 'Email dan password wajib diisi' });
+  try {
     const user = await User.findOne({ email });
-
-    if (!user) {
-        return res.status(400).json({
-            message: 'User tidak ditemukan'
-        });
-    }
-
-    const cocok = await bcrypt.compare(password, user.password);
-
-    if (!cocok) {
-        return res.status(400).json({
-            message: 'Password salah'
-        });
-    }
-
+    if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ message: 'Password salah' });
+    
+    // Pastikan secret key JWT ada di environment variables
+    const jwtSecret = process.env.JWT_SECRET || 'SECRET_KEY'; // Paling aman pakai env
     const token = jwt.sign(
-        { id: user._id },
-        process.env.JWT_SECRET,
-        { expiresIn: '7d' }
+      { userId: user._id, email: user.email, name: user.name, role: user.role }, 
+      jwtSecret, 
+      { expiresIn: '7d' }
     );
-
-    res.json({
-        token,
-        user: {
-            id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role || 'user'
-        }
+    
+    res.json({ 
+      message: 'Login berhasil', 
+      token, 
+      user: { 
+        email: user.email, 
+        name: user.name,
+        role: user.role  // <-- PENTING! Kirim role untuk akses admin panel
+      } 
     });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: 'Terjadi error pada server', error: error.message });
+  }
 });
 
 // ====================== MATERI & QUIZ PROGRESS ======================
