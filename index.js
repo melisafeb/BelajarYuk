@@ -116,11 +116,13 @@ const Chat = mongoose.model('Chat', ChatSchema);
 const RoomDocument = require('./models/roomDocument');
 
 // VERIFY TOKEN
+// VERIFY TOKEN
 const verifyToken = (req, res, next) => {
   const token = req.header('x-auth-token');
   if (!token) return res.status(401).json({ message: 'Akses ditolak' });
   try {
-    const decoded = jwt.verify(token, 'SECRET_KEY');
+    const jwtSecret = process.env.JWT_SECRET || 'SECRET_KEY';
+    const decoded = jwt.verify(token, jwtSecret);
     req.user = decoded;
     next();
   } catch (err) {
@@ -244,14 +246,7 @@ Output HARUS berupa JSON VALID dengan format:
     // Potong fallback sesuai estimatedQuestions
     return fallbackQuiz.slice(0, estimatedQuestions);
   }
-}
-  if (!response.ok) throw new Error('Gagal generate quiz');
-  const data = await response.json();
-  const aiMessage = data.choices[0].message.content;
-  let cleaned = aiMessage.trim().replace(/```json/g, '').replace(/```/g, '');
-  const parsed = JSON.parse(cleaned);
-  let questions = parsed.questions || (Array.isArray(parsed) ? parsed : []);
-  return questions.filter(q => q.text && Array.isArray(q.options) && q.options.length === 4 && typeof q.correct === 'number');
+};
 
 
 
