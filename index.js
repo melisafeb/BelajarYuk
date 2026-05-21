@@ -20,7 +20,7 @@ const io = new Server(server, {
 
 // MIDDLEWARE
 app.use(cors({
-    origin: "https://belajaryuk-production-74c4.up.railway.app/",
+    origin: "https://belajaryuk-production-74c4.up.railway.app",
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
@@ -258,33 +258,39 @@ app.post('/api/register', async (req, res) => {
 });
 
 app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ message: 'Email dan password wajib diisi' });
-  try {
+    const { email, password } = req.body;
+
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: 'Password salah' });
-    
-    // Tambahkan role ke token JWT
+
+    if (!user) {
+        return res.status(400).json({
+            message: 'User tidak ditemukan'
+        });
+    }
+
+    const cocok = await bcrypt.compare(password, user.password);
+
+    if (!cocok) {
+        return res.status(400).json({
+            message: 'Password salah'
+        });
+    }
+
     const token = jwt.sign(
-      { userId: user._id, email: user.email, name: user.name, role: user.role }, 
-      'SECRET_KEY', 
-      { expiresIn: '7d' }
+        { id: user._id },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
     );
-    
-    res.json({ 
-      message: 'Login berhasil', 
-      token, 
-      user: { 
-        email: user.email, 
-        name: user.name,
-        role: user.role  // <-- KIRIM ROLE KE FRONTEND
-      } 
+
+    res.json({
+        token,
+        user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role || 'user'
+        }
     });
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi error', error: error.message });
-  }
 });
 
 // ====================== MATERI & QUIZ PROGRESS ======================
