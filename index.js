@@ -171,18 +171,22 @@ async function generateQuizFromText(text, title) {
   if (estimatedQuestions > 10) estimatedQuestions = 10; // ← Maksimal 10 soal (dari 20)
 
   // 3. PROMPT LENGKAP (Ini yang kamu mau! Level, formula, penjelasan, dan distribusi)
-  const prompt = `Buat ${estimatedQuestions} soal pilihan ganda dari materi berikut dengan distribusi level: 30% easy, 40% medium, 30% hard. 
-Setiap soal HARUS sertakan:
-- text: teks soal
-- options: array of 4 pilihan jawaban
-- correct: indeks jawaban benar (0, 1, 2, atau 3)
-- level: "easy", "medium", atau "hard"
-- formula: rumus yang relevan (jika tidak ada, isi string kosong)
-- explanation: penjelasan cara kerja atau alasan jawaban benar
+  const prompt = `Anda adalah AI yang membuat soal ujian berdasarkan teks dokumen yang diberikan.
 
-Output HARUS berupa JSON VALID dengan format:
+PERATURAN WAJIB:
+1. Soal dan jawaban HARUS 100% berdasarkan teks dokumen di bawah ini.
+2. JANGAN membuat soal dari pengetahuan umum atau di luar teks.
+3. Jika teks tidak cukup untuk membuat soal, kembalikan array kosong.
+4. Setiap soal wajib memiliki: text, options (4 pilihan), correct (0-3), level ("easy"/"medium"/"hard"), formula (isi "" jika tidak ada), explanation.
+
+DOKUMEN:
+${truncatedText}
+
+Buat ${estimatedQuestions} soal pilihan ganda dengan distribusi level: 30% easy, 40% medium, 30% hard.
+
+Output HARUS JSON valid:
 { "questions": [ { "text": "...", "options": ["...", "...", "...", "..."], "correct": 0, "level": "easy", "formula": "...", "explanation": "..." } ] }`;
-
+ 
   // 4. Panggil API Groq
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error('GROQ_API_KEY tidak ditemukan');
@@ -208,6 +212,7 @@ Output HARUS berupa JSON VALID dengan format:
   }
 
   // 5. Proses Hasil AI
+    // 5. Proses Hasil AI
   const data = await response.json();
   let aiMessage = data.choices[0].message.content;
   let cleaned = aiMessage.trim().replace(/```json|```/g, '');
@@ -216,21 +221,31 @@ Output HARUS berupa JSON VALID dengan format:
     const parsed = JSON.parse(cleaned);
     let questions = parsed.questions || (Array.isArray(parsed) ? parsed : []);
     
-    // Filter soal yang valid
-    const validQuestions = questions.filter(q => 
-      q.text && 
-      Array.isArray(q.options) && 
-      q.options.length === 4 && 
-      typeof q.correct === 'number' &&
-      q.correct >= 0 && q.correct <= 3 &&
-      (q.level === 'easy' || q.level === 'medium' || q.level === 'hard')
-    );
+    // ========== VALIDASI & FILTER SOAL ==========
+    const docPreview = truncatedText.toLowerCase().substring(0, 500);
+    const docWords = docPreview.split(/\s+/).filter(w => w.length > 5);
+    
+    const validQuestions = questions.filter(q => {
+      // Validasi dasar
+      if (!q.text || !Array.isArray(q.options) || q.options.length !== 4) return false;
+      if (typeof q.correct !== 'number' || q.correct < 0 || q.correct > 3) return false;
+      if (q.level !== 'easy' && q.level !== 'medium' && q.level !== 'hard') return false;
+      
+      // Validasi relevansi dengan dokumen
+      const questionText = q.text.toLowerCase();
+      const isRelevant = docWords.some(word => questionText.includes(word));
+      
+      // Jika tidak relevan, buang soal (AI berhalusinasi)
+      return isRelevant;
+    });
     
     if (validQuestions.length === 0) throw new Error('Tidak ada soal valid dari AI');
     return validQuestions;
     
   } catch (parseError) {
     console.error("Gagal parsing JSON dari Groq:", cleaned);
+    
+ 
     
     // 6. FALLBACK QUIZ (Dengan Level & Formula!)
     const easyFormula = "Rumus dasar: pahami konsep utama dari materi.";
