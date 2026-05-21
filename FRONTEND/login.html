@@ -552,6 +552,30 @@ function showToast(message, type = 'success') {
         if (urlParams.get('tab') === 'register') {
             showRegister();
         }
+
+        // ====================== INIT EVENT LISTENER ======================
+document.addEventListener('DOMContentLoaded', function() {
+    const btnLogin = document.getElementById('btnLogin');
+    if (btnLogin) {
+        btnLogin.addEventListener('click', loginUser);
+        console.log('Event listener login terpasang');
+    } else {
+        console.log('Tombol login tidak ditemukan');
+    }
+    
+    // Enter key submit
+    const passwordInput = document.getElementById('loginPassword');
+    if (passwordInput) {
+        passwordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const btn = document.getElementById('btnLogin');
+                if (btn) btn.click();
+            }
+        });
+    }
+});
+
     </script>
 </body>
 </html>
