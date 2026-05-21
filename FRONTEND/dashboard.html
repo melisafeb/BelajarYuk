@@ -801,8 +801,8 @@ function showQuizReminder(materiTitle) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     if (!document.getElementById('notifQuiz')?.checked) return;
     new Notification('BelajarYuk - Pengingat Kuis', {
-        body: `Anda memiliki kuis untuk materi "${materiTitle}". Yuk kerjakan!`,
-        icon: 'https://via.placeholder.com/64',
+        body: `📚 Anda memiliki kuis untuk materi "${materiTitle}". Yuk kerjakan!`,
+        icon: '', // Hapus URL placeholder
         silent: false
     });
 }
@@ -1819,6 +1819,38 @@ for (let i = 0; i < total; i++) {
             alert("Gagal menyimpan: " + err.message);
         }
     }
+}
+
+// ====================== NOTIFIKASI CUSTOM SEDERHANA ======================
+function showCustomNotif(message, type = 'success') {
+    // Buat elemen toast sederhana
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-5 right-5 z-50 px-5 py-3 rounded-xl text-white text-sm font-medium shadow-lg transition-all transform translate-x-0`;
+    
+    let bgColor = '';
+    let icon = '';
+    
+    if (type === 'success') {
+        bgColor = 'bg-gradient-to-r from-green-500 to-green-600';
+        icon = '✅';
+    } else if (type === 'error') {
+        bgColor = 'bg-gradient-to-r from-red-500 to-red-600';
+        icon = '❌';
+    } else {
+        bgColor = 'bg-gradient-to-r from-yellow-500 to-yellow-600';
+        icon = '⚠️';
+    }
+    
+    toast.className = `${toast.className} ${bgColor}`;
+    toast.innerHTML = `${icon} ${message}`;
+    document.body.appendChild(toast);
+    
+    // Hapus setelah 3 detik
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
 async function uploadDocument() {
